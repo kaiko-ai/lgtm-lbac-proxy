@@ -37,7 +37,7 @@ jobs:
       ARTIFACT_REPO: ${{ inputs.artifact_repo || 'binhnguyenduc/helm-charts' }}
     steps:
       - name: Checkout chart source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
 
@@ -85,7 +85,7 @@ jobs:
           echo "✅ HELM_REPO_PUSH_TOKEN secret is configured"
 
       - name: Install Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
           version: v3.14.4
 
@@ -129,7 +129,7 @@ jobs:
           echo "chart_version=$CHART_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Checkout artifact repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: ${{ env.ARTIFACT_REPO }}
           token: ${{ secrets.HELM_REPO_PUSH_TOKEN }}
