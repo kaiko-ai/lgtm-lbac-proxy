@@ -142,9 +142,9 @@ autoscaling:
   behavior: {}
 
 image:
-  repository: ghcr.io/binhnguyenduc/lgtm-lbac-proxy
+  repository: ghcr.io/kaiko-ai/lgtm-lbac-proxy
   pullPolicy: IfNotPresent
-  tag: "@sha256:8e930616aca5a5bd3758a70132f6dd28ac80cef6cd3a9ac6b1ba7e703407a934"
+  tag: ""
 
 service:
   webPort: 8080
