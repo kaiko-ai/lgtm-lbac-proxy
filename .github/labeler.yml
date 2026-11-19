@@ -49,8 +49,3 @@ dependencies:
 build:
   - changed-files:
     - any-glob-to-any-file: ['Makefile', 'build/**/*', 'scripts/**/*']
-
-# Deployment
-deployment:
-  - changed-files:
-    - any-glob-to-any-file: ['deploy/**/*', 'k8s/**/*', 'kubernetes/**/*']

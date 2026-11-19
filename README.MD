@@ -166,10 +166,6 @@ docker run -d \
   ghcr.io/binhnguyenduc/lgtm-lbac-proxy:latest
 ```
 
-### Kubernetes
-
-See [Kubernetes Deployment](#kubernetes-deployment).
-
 ---
 
 ## Configuration
@@ -619,16 +615,6 @@ rate(http_requests_total{namespace=~"prod-.*"}[5m])
 # Enforced Query
 sum(container_memory_usage_bytes{namespace!~"temp-.*"}) by (pod)
 ```
-
----
-
-## Kubernetes Deployment
-
-This fork publishes only the container image (`ghcr.io/kaiko-ai/lgtm-lbac-proxy`). It does not ship a Helm chart. Deploy the image with your own manifests or chart:
-
-- Mount the proxy config at `/etc/config/config/config.yaml` (see [configs/config.yaml](configs/config.yaml)).
-- Mount the label policies at `/etc/config/labels/labels.yaml` (see [Label Configuration](#label-configuration)).
-- Expose port `8080` (proxy) and `8081` (metrics).
 
 ---
 
