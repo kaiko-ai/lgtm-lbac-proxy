@@ -144,7 +144,7 @@ autoscaling:
 image:
   repository: ghcr.io/binhnguyenduc/lgtm-lbac-proxy
   pullPolicy: IfNotPresent
-  tag: ""
+  tag: "@sha256:8e930616aca5a5bd3758a70132f6dd28ac80cef6cd3a9ac6b1ba7e703407a934"
 
 service:
   webPort: 8080
