@@ -14,35 +14,46 @@ on:
   release:
     types: [ published ]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
-  GO_VERSION: '1.27.4'
   REGISTRY: ghcr.io
 
 jobs:
-  # Temporarily disabled: waiting for golangci-lint to support Go 1.25
-  # Error: golangci-lint v1.64.8 built with go1.24 cannot lint go1.25 code
-  # TODO: Re-enable when golangci-lint supports Go 1.25
-  # lint:
-  #   name: lint
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
-  #       with:
-  #         go-version: ${{ env.GO_VERSION }}
-  #         cache: true
-  #     - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-  #     - name: golangci-lint
-  #       uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84 # v6.5.2
-  #       with:
-  #         # Optional: golangci-lint command line arguments.
-  #         args: --issues-exit-code=1 --timeout=5m #--disable typecheck
-  #     - name: go vet
-  #       run: go vet ./...
-
-  scan-sarif:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+          # --new-from-rev compares against the parent commit
+          fetch-depth: 2
+
+      - name: Set up tools
+        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        with:
+          cache: false
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: golangci-lint
+        run: golangci-lint run --new-from-rev=HEAD~1 ./...
+
+  scan-sarif:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -66,6 +77,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -83,29 +96,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-
-      - name: Set up Go
-        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
+          persist-credentials: false
+
+      # mise.toml and mise.lock define the toolchain for CI and local dev.
+      # No cache: this workflow publishes release images.
+      - name: Set up tools
+        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        with:
+          cache: false
 
       - name: Install dependencies
-        run: go get .
+        run: go mod download && go mod verify
 
       - name: Test
-        run: go test -v ./...
+        run: go test -v -race ./...
 
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-
-      - name: Set up Go
-        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
+          persist-credentials: false
+
+      # mise.toml and mise.lock define the toolchain for CI and local dev.
+      # No cache: this workflow publishes release images.
+      - name: Set up tools
+        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        with:
+          cache: false
 
       - name: Install dependencies
         run: go mod download && go mod verify
@@ -131,6 +150,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: '0'
 
@@ -155,10 +175,6 @@ jobs:
       # Setup Docker Buildx with caching
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
-        with:
-          driver-opts: |
-            image=moby/buildkit:latest
-            network=host
 
       - name: Log in to the GitHub Container registry
         if: ${{ github.event_name == 'push' || github.event_name == 'release' }}
@@ -236,7 +252,9 @@ jobs:
 
       - name: Image digest
         if: ${{ github.event_name == 'push' || github.event_name == 'release' }}
-        run: echo "${{ steps.push-image.outputs.digest }}"
+        env:
+          DIGEST: ${{ steps.push-image.outputs.digest }}
+        run: echo "$DIGEST"
 
       # Upload SBOM as artifact
       - name: Upload SBOM artifact

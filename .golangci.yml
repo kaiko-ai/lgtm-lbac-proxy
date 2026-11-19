@@ -1,0 +1,24 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - gosec
+    - misspell
+    - nilerr
+    - nolintlint
+    - unconvert
+    - wastedassign
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+# CI runs this with --new-from-rev=HEAD~1 so only newly introduced findings
+# fail; the existing backlog is burned down separately.
