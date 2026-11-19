@@ -8,10 +8,10 @@ require (
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/gorilla/mux v1.8.1
-	github.com/grafana/tempo v1.5.1-0.20260922111232-e32ba38449ae
+	github.com/grafana/tempo v1.5.1-0.20261021135948-f317720e7e51
 	github.com/observatorium/api v0.1.3-0.20240311102334-63c873db5762
 	github.com/prometheus/client_golang v1.25.0
-	github.com/prometheus/prometheus v0.312.0
+	github.com/prometheus/prometheus v0.311.3
 	github.com/rs/zerolog v1.35.1
 	github.com/slok/go-http-metrics v0.13.0
 	github.com/spf13/viper v1.21.0
@@ -27,7 +27,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
 	github.com/dennwc/varint v1.0.0 // indirect
-	github.com/facette/natsort v0.0.0-20181210072756-2cd4dd1e2dcb // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.6.1 // indirect
@@ -38,9 +37,9 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/gogo/status v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grafana/dskit v0.0.0-20261118194849-a94746663b7a // indirect
-	github.com/grafana/gomemcache v0.0.0-20261112174412-3f2aa5dee9f7 // indirect
 	github.com/grafana/otel-profiling-go v0.7.0 // indirect
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.12 // indirect
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853 // indirect
@@ -55,7 +54,6 @@ require (
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mdlayher/socket v0.8.0 // indirect
 	github.com/mdlayher/vsock v1.4.0 // indirect
-	github.com/miekg/dns v1.1.73 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
@@ -75,10 +73,8 @@ require (
 	github.com/prometheus/exporter-toolkit v0.20.0 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.23.0 // indirect
-	github.com/redis/go-redis/v9 v9.23.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/sercand/kuberesolver/v6 v6.0.1 // indirect
-	github.com/sony/gobreaker v1.0.0 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.1.0 // indirect
@@ -132,8 +128,9 @@ require (
 	google.golang.org/protobuf v1.36.12 // indirect
 )
 
-// Pin specific versions to prevent unwanted updates
+// Pin specific versions to prevent unwanted updates.
+// Tempo: v2.10.10 release (commit f317720e7e51). Prometheus: v0.311.3, the version Tempo v2.10.10 uses.
 replace (
-	github.com/grafana/tempo => github.com/grafana/tempo v1.5.1-0.20260922111232-e32ba38449ae
-	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.312.0
+	github.com/grafana/tempo => github.com/grafana/tempo v1.5.1-0.20261021135948-f317720e7e51
+	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.311.3
 )
