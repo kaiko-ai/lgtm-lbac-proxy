@@ -34,16 +34,6 @@
         "digest"
       ],
       "groupName": "Go modules (non-major)"
-    },
-    {
-      "description": "Chart image tag defaults to appVersion",
-      "matchManagers": [
-        "helm-values"
-      ],
-      "matchPackageNames": [
-        "ghcr.io/kaiko-ai/lgtm-lbac-proxy"
-      ],
-      "pinDigests": false
     }
   ]
 }
