@@ -53,4 +53,4 @@ build:
 # Deployment
 deployment:
   - changed-files:
-    - any-glob-to-any-file: ['deploy/**/*', 'k8s/**/*', 'kubernetes/**/*', 'helm/**/*']
+    - any-glob-to-any-file: ['deploy/**/*', 'k8s/**/*', 'kubernetes/**/*']

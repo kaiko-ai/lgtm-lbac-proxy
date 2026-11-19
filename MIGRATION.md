@@ -49,21 +49,9 @@ docker run ghcr.io/binhnguyenduc/lgtm-lbac-proxy:latest
 
 **Action:** Update your docker-compose.yml or container runtime configurations.
 
-### 3. Kubernetes/Helm Deployment
+### 3. Kubernetes Deployment
 
-**Before:**
-```yaml
-helm install multena-proxy ./helm/gp-multena \
-  --set image.repository=ghcr.io/gepaplexx/multena-proxy
-```
-
-**After:**
-```yaml
-helm install lgtm-lbac-proxy ./helm/lgtm-lbac-proxy \
-  --set image.repository=ghcr.io/binhnguyenduc/lgtm-lbac-proxy
-```
-
-**Action:** Update your values.yaml:
+This fork no longer ships a Helm chart. If you deploy with your own manifests or chart, change the image:
 
 ```yaml
 # Before
