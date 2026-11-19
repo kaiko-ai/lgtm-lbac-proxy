@@ -31,7 +31,7 @@ func (PromQLEnforcer) Enforce(query string, policy LabelPolicy) (string, error) 
 	}
 
 	// Parse the query
-	expr, err := parser.ParseExpr(query)
+	expr, err := parser.NewParser(parser.Options{}).ParseExpr(query)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse query: %w", err)
 	}

@@ -303,12 +303,12 @@ func TestPromQLEnforcer_Enforce(t *testing.T) {
 
 			// Parse both got and want to compare semantically
 			// This handles differences in label ordering and whitespace
-			gotExpr, err := parser.ParseExpr(got)
+			gotExpr, err := parser.NewParser(parser.Options{}).ParseExpr(got)
 			if err != nil {
 				t.Errorf("EnforceMulti() produced invalid query: %v", err)
 				return
 			}
-			wantExpr, err := parser.ParseExpr(tt.want)
+			wantExpr, err := parser.NewParser(parser.Options{}).ParseExpr(tt.want)
 			if err != nil {
 				t.Errorf("Test case has invalid expected query: %v", err)
 				return

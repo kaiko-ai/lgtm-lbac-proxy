@@ -4,3 +4,12 @@
 # ConfigMap contains admin.bypass boolean for enabling admin group bypass feature
 # This is documented configuration, not sensitive data
 AVD-KSV-0109
+
+# CVE-2026-21728, CVE-2026-28377: Grafana Tempo (fixed in 2.10.3).
+# We pin Tempo v2.10.10 (commit f317720e7e51), which includes both fixes.
+# Tempo release tags use a module path Go can't resolve by semver, so go.mod
+# has a pseudo-version (v1.5.1-0.20261021135948-f317720e7e51). Trivy compares
+# that against 2.10.3 and wrongly reports it as older.
+# Remove these lines when we move to github.com/grafana/tempo/v3.
+CVE-2026-21728
+CVE-2026-28377
