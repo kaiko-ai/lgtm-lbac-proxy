@@ -142,7 +142,7 @@ autoscaling:
   behavior: {}
 
 image:
-  repository: ghcr.io/binhnguyenduc/lgtm-lbac-proxy
+  repository: ghcr.io/kaiko-ai/lgtm-lbac-proxy
   pullPolicy: IfNotPresent
   tag: ""
 
