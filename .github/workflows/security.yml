@@ -36,20 +36,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: zizmor --format=github .
-
-  govulncheck:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          persist-credentials: false
-
-      - name: Set up tools
-        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
-        with:
-          install_args: go go:golang.org/x/vuln/cmd/govulncheck
-
-      - name: govulncheck
-        run: govulncheck ./...

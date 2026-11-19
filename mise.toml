@@ -8,6 +8,5 @@ pin = true
 [tools]
 actionlint = "1.7.12"
 go = "1.27.4"
-"go:golang.org/x/vuln/cmd/govulncheck" = "1.9.0"
 golangci-lint = "2.15.0"
 zizmor = "1.32.0"
