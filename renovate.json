@@ -3,7 +3,6 @@
   "forkProcessing": "enabled",
   "extends": [
     "config:best-practices",
-    ":disableDependencyDashboard",
     ":enableVulnerabilityAlertsWithLabel(security)",
     ":ignoreUnstable",
     ":semanticCommits",
