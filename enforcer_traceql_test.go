@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/grafana/tempo/pkg/traceql"
 	"strings"
 	"testing"
 
+	"github.com/grafana/tempo/pkg/traceql"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -225,9 +225,9 @@ func injectFilter(query string, filter string) (string, int) {
 		b.WriteString(query[last:sp[0]])
 		inner := strings.TrimSpace(query[sp[0]+1 : sp[1]])
 		if inner == "" || inner == "true" {
-			b.WriteString(fmt.Sprintf("{ %s }", filter))
+			fmt.Fprintf(&b, "{ %s }", filter)
 		} else {
-			b.WriteString(fmt.Sprintf("{ (%s) && (%s) }", filter, inner))
+			fmt.Fprintf(&b, "{ (%s) && (%s) }", filter, inner)
 		}
 		last = sp[1] + 1
 	}
