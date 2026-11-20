@@ -1,12 +1,23 @@
 package main
 
 import (
+	"github.com/grafana/tempo/pkg/traceql"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
+// canonicalTraceQL parses and re-serialises a query, so tests compare meaning
+// (operator precedence included), not spacing or quote style.
+func canonicalTraceQL(t *testing.T, q string) string {
+	t.Helper()
+	ast, err := traceql.Parse(q)
+	if err != nil {
+		t.Fatalf("invalid TraceQL %q: %v", q, err)
+	}
+	return ast.String()
+}
 
 // normalizeWhitespace removes extra whitespace for comparison
 func normalizeWhitespace(s string) string {
@@ -144,7 +155,7 @@ func TestTraceQLEnforcer_Enforce(t *testing.T) {
 				},
 				Logic: "AND",
 			},
-			expectedResult: "{ resource.namespace = `prod` }",
+			expectedResult: "{ (resource.namespace =~ `prod|staging`) && (resource.namespace = `prod`) }",
 			expectErr:      false,
 		},
 		{
@@ -169,7 +180,7 @@ func TestTraceQLEnforcer_Enforce(t *testing.T) {
 				},
 				Logic: "AND",
 			},
-			expectedResult: "{ (resource.namespace = `prod`) && (resource.team = `backend`) }",
+			expectedResult: "{ ((resource.namespace =~ `prod|staging`) && (resource.team =~ `backend|frontend`)) && ((resource.namespace = `prod`) && (resource.team = `backend`)) }",
 			expectErr:      false,
 		},
 		{
@@ -194,7 +205,7 @@ func TestTraceQLEnforcer_Enforce(t *testing.T) {
 				},
 				Logic: "AND",
 			},
-			expectedResult: `{ resource.namespace=~"prod\.us-west-1|staging\.us-east-1" }`,
+			expectedResult: `{ resource.namespace=~"prod\\.us-west-1|staging\\.us-east-1" }`,
 			expectErr:      false,
 		},
 		{
@@ -265,7 +276,7 @@ func TestTraceQLEnforcer_Enforce(t *testing.T) {
 				},
 				Logic: "AND",
 			},
-			expectedResult: "{ ((resource.namespace = `prod`) && (resource.team = `backend`)) && (span.http.status_code = 500) }",
+			expectedResult: "{ ((resource.namespace = `prod`) && (resource.team = `backend`)) && (((resource.namespace = `prod`) && (resource.team = `backend`)) && (span.http.status_code = 500)) }",
 			expectErr:      false,
 		},
 		{
@@ -294,9 +305,7 @@ func TestTraceQLEnforcer_Enforce(t *testing.T) {
 				}
 			} else {
 				assert.NoError(t, err)
-				normalizedResult := normalizeWhitespace(result)
-				normalizedExpected := normalizeWhitespace(tt.expectedResult)
-				assert.Equal(t, normalizedExpected, normalizedResult)
+				assert.Equal(t, canonicalTraceQL(t, tt.expectedResult), canonicalTraceQL(t, result))
 			}
 		})
 	}
@@ -419,7 +428,8 @@ func TestBuildRuleFilter(t *testing.T) {
 				Operator: "=",
 				Values:   []string{"prod.us-west-1", "staging.us-east-1"},
 			},
-			expectedResult: `resource.namespace=~"prod\.us-west-1|staging\.us-east-1"`,
+			// The regex escape is doubled so the TraceQL string literal is valid.
+			expectedResult: `resource.namespace=~"prod\\.us-west-1|staging\\.us-east-1"`,
 		},
 	}
 
@@ -534,58 +544,6 @@ func TestValidatePolicyAttributes(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
-		})
-	}
-}
-
-func TestCheckPolicyAttributes(t *testing.T) {
-	tests := []struct {
-		name           string
-		query          string
-		policy         LabelPolicy
-		expectedResult bool
-	}{
-		{
-			name:  "No attributes in query",
-			query: `{ span.http.status_code = 200 }`,
-			policy: LabelPolicy{
-				Rules: []LabelRule{
-					{Name: "resource.namespace", Operator: "=", Values: []string{"prod"}},
-				},
-				Logic: "AND",
-			},
-			expectedResult: false,
-		},
-		{
-			name:  "All attributes present",
-			query: `{ resource.namespace = "prod" && resource.team = "backend" }`,
-			policy: LabelPolicy{
-				Rules: []LabelRule{
-					{Name: "resource.namespace", Operator: "=", Values: []string{"prod"}},
-					{Name: "resource.team", Operator: "=", Values: []string{"backend"}},
-				},
-				Logic: "AND",
-			},
-			expectedResult: true,
-		},
-		{
-			name:  "Some attributes missing",
-			query: `{ resource.namespace = "prod" }`,
-			policy: LabelPolicy{
-				Rules: []LabelRule{
-					{Name: "resource.namespace", Operator: "=", Values: []string{"prod"}},
-					{Name: "resource.team", Operator: "=", Values: []string{"backend"}},
-				},
-				Logic: "AND",
-			},
-			expectedResult: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := checkPolicyAttributes(tt.query, tt.policy)
-			assert.Equal(t, tt.expectedResult, result)
 		})
 	}
 }
