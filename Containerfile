@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.27.1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
+# syntax=docker/dockerfile:1.29.0@sha256:572cebbc2b15e6f84c077742952674889cb63cd5e9b80abdffcbe587b6f19183
 
 # This Containerfile expects a pre-built lgtm-lbac-proxy binary
 # Build the binary first: CGO_ENABLED=0 go build -ldflags="-w -s" -trimpath -o lgtm-lbac-proxy .
