@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/url"
 	"sort"
 	"strings"
 
@@ -67,4 +68,36 @@ func ruleToMatcher(rule LabelRule) *labels.Matcher {
 		Type:  matchType,
 		Value: value,
 	}
+}
+
+// singleJoiningSlash joins two URL paths with exactly one slash between them.
+func singleJoiningSlash(a, b string) string {
+	aslash := strings.HasSuffix(a, "/")
+	bslash := strings.HasPrefix(b, "/")
+	switch {
+	case aslash && bslash:
+		return a + b[1:]
+	case !aslash && !bslash:
+		return a + "/" + b
+	}
+	return a + b
+}
+
+// joinURLPath appends the request path to the upstream's base path, keeping
+// escaped paths intact. Same behaviour as httputil.NewSingleHostReverseProxy.
+func joinURLPath(a, b *url.URL) (path, rawpath string) {
+	if a.RawPath == "" && b.RawPath == "" {
+		return singleJoiningSlash(a.Path, b.Path), ""
+	}
+	apath := a.EscapedPath()
+	bpath := b.EscapedPath()
+	aslash := strings.HasSuffix(apath, "/")
+	bslash := strings.HasPrefix(bpath, "/")
+	switch {
+	case aslash && bslash:
+		return a.Path + b.Path[1:], apath + bpath[1:]
+	case !aslash && !bslash:
+		return a.Path + "/" + b.Path, apath + "/" + bpath
+	}
+	return a.Path + b.Path, apath + bpath
 }

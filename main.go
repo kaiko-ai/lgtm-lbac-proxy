@@ -138,6 +138,14 @@ func (a *App) createProxy(targetURL string, actorHeader string, transport *http.
 			req.URL.Scheme = target.Scheme
 			req.URL.Host = target.Host
 			req.Host = target.Host
+			// Keep the upstream's base path (e.g. /select/0/prometheus) and query,
+			// as httputil.NewSingleHostReverseProxy does.
+			req.URL.Path, req.URL.RawPath = joinURLPath(target, req.URL)
+			if target.RawQuery == "" || req.URL.RawQuery == "" {
+				req.URL.RawQuery = target.RawQuery + req.URL.RawQuery
+			} else {
+				req.URL.RawQuery = target.RawQuery + "&" + req.URL.RawQuery
+			}
 
 			// Inject actor header if configured (base64 encoded username for fair usage tracking)
 			if actorHeader != "" {
