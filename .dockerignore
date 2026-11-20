@@ -67,11 +67,10 @@ manual_verify_test.go
 openspec/
 AGENTS.md
 
-# Helm charts and Kubernetes manifests
+# Kubernetes manifests
 charts/
 deployments/
 k8s/
-helm/
 
 # CI/CD
 .gitlab-ci.yml
