@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/grafana/tempo/pkg/traceql"
@@ -56,20 +57,26 @@ func (TraceQLEnforcer) Enforce(query string, policy LabelPolicy) (string, error)
 	}
 
 	// Check if query already contains all policy attributes
-	hasPolicyAttributes := checkPolicyAttributes(serialized, policy)
-	if hasPolicyAttributes {
-		log.Trace().Str("function", "enforce").Str("query", serialized).Msg("enforced (already has policy attributes)")
-		return serialized, nil
+	// Inject the policy into every spanset filter. Always inject, even when the
+	// query already names a policy attribute: an attribute in one spanset does
+	// not restrict another (e.g. `{ ns = "a" } >> { }`), and ANDing the policy
+	// again is harmless.
+	filter := buildPolicyFilter(policy)
+	modified, injected := injectFilter(serialized, filter)
+	if injected == 0 {
+		return "", fmt.Errorf("cannot enforce policy: query has no spanset filter")
 	}
 
-	// Inject policy filter if not present
-	filter := buildPolicyFilter(policy)
-	modified := injectFilter(serialized, filter)
-
-	// Validate modified query by re-parsing
-	_, err = traceql.Parse(modified)
+	// Validate the modified query by re-parsing, and check that every spanset
+	// in the result carries the policy. Fail closed: never return a query with
+	// an unfiltered spanset.
+	reparsed, err := traceql.Parse(modified)
 	if err != nil {
 		return "", fmt.Errorf("failed to inject policy filter: %w", err)
+	}
+	modified = reparsed.String()
+	if err := verifyEverySpansetFiltered(modified, policy); err != nil {
+		return "", err
 	}
 
 	log.Trace().Str("function", "enforce").Str("query", modified).Msg("enforced")
@@ -139,14 +146,14 @@ func buildRuleFilter(rule LabelRule) string {
 			for i, v := range rule.Values {
 				escapedValues[i] = escapeRegexChars(v)
 			}
-			valueExpr = fmt.Sprintf(`"%s"`, strings.Join(escapedValues, "|"))
+			valueExpr = strconv.Quote(strings.Join(escapedValues, "|"))
 		} else {
 			// Single value, use as-is (user-provided regex pattern)
-			valueExpr = fmt.Sprintf(`"%s"`, rule.Values[0])
+			valueExpr = strconv.Quote(rule.Values[0])
 		}
 	} else {
 		// For = and !=, use single value without escaping
-		valueExpr = fmt.Sprintf(`"%s"`, rule.Values[0])
+		valueExpr = strconv.Quote(rule.Values[0])
 	}
 
 	return fmt.Sprintf("%s%s%s", rule.Name, operator, valueExpr)
@@ -201,44 +208,87 @@ func validatePolicyAttributes(query string, policy LabelPolicy) error {
 	return nil
 }
 
-// checkPolicyAttributes checks if the query already contains all policy attributes.
-// Returns true if all attributes from the policy are present in the query.
-func checkPolicyAttributes(query string, policy LabelPolicy) bool {
-	for _, rule := range policy.Rules {
-		// Pattern to match attribute
-		pattern := fmt.Sprintf(`%s\s*[=!]=?~?\s*[\x60"]`, regexp.QuoteMeta(rule.Name))
-		re := regexp.MustCompile(pattern)
-
-		if !re.MatchString(query) {
-			// Attribute not found
-			return false
-		}
+// injectFilter ANDs the policy filter into every spanset filter `{ ... }` of a
+// serialized TraceQL query, including spansets in pipelines and on either side
+// of spanset operators (>>, &&, ||, ...). Braces inside string literals are
+// ignored. Both sides are parenthesised so operator precedence can't drop the
+// policy (`policy && a || b` would mean `(policy && a) || b`).
+// Returns the rewritten query and the number of spansets it changed.
+func injectFilter(query string, filter string) (string, int) {
+	spans := findSpansets(query)
+	if len(spans) == 0 {
+		return query, 0
 	}
-
-	// All attributes found
-	return true
+	var b strings.Builder
+	last := 0
+	for _, sp := range spans {
+		b.WriteString(query[last:sp[0]])
+		inner := strings.TrimSpace(query[sp[0]+1 : sp[1]])
+		if inner == "" || inner == "true" {
+			fmt.Fprintf(&b, "{ %s }", filter)
+		} else {
+			fmt.Fprintf(&b, "{ (%s) && (%s) }", filter, inner)
+		}
+		last = sp[1] + 1
+	}
+	b.WriteString(query[last:])
+	return b.String(), len(spans)
 }
 
-// injectFilter injects a policy filter into an existing TraceQL query.
-// The filter is combined with the existing query using the AND operator.
-func injectFilter(query string, filter string) string {
-	trimmed := strings.TrimSpace(query)
-
-	// Handle { true } case (result of empty query parsing)
-	if trimmed == "{ true }" {
-		return fmt.Sprintf("{ %s }", filter)
-	}
-
-	// Remove outer braces, inject filter with AND, add braces back
-	if strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}") {
-		inner := strings.TrimSpace(trimmed[1 : len(trimmed)-1])
-		if inner == "" || inner == "true" {
-			return fmt.Sprintf("{ %s }", filter)
+// findSpansets returns the [open, close] byte offsets of every top-level
+// `{ ... }` in a TraceQL query, skipping braces inside string literals
+// ("..." with backslash escapes, or `...`).
+func findSpansets(query string) [][2]int {
+	var spans [][2]int
+	depth, start := 0, -1
+	var quote byte
+	for i := 0; i < len(query); i++ {
+		c := query[i]
+		if quote != 0 {
+			if quote == '"' && c == '\\' {
+				i++ // skip the escaped character
+			} else if c == quote {
+				quote = 0
+			}
+			continue
 		}
-		return fmt.Sprintf("{ %s && %s }", filter, inner)
+		switch c {
+		case '"', '`':
+			quote = c
+		case '{':
+			if depth == 0 {
+				start = i
+			}
+			depth++
+		case '}':
+			if depth > 0 {
+				depth--
+				if depth == 0 {
+					spans = append(spans, [2]int{start, i})
+				}
+			}
+		}
 	}
+	return spans
+}
 
-	return query
+// verifyEverySpansetFiltered checks that each spanset filter in a serialized
+// query names every policy attribute. It is a last line of defence: a query
+// that fails it is rejected rather than sent upstream unfiltered.
+func verifyEverySpansetFiltered(query string, policy LabelPolicy) error {
+	spans := findSpansets(query)
+	if len(spans) == 0 {
+		return fmt.Errorf("cannot enforce policy: query has no spanset filter")
+	}
+	for _, sp := range spans {
+		body := query[sp[0] : sp[1]+1]
+		for _, rule := range policy.Rules {
+			if !strings.Contains(body, rule.Name) {
+				return fmt.Errorf("cannot enforce policy: spanset %s is missing %s", body, rule.Name)
+			}
+		}
+	}
+	return nil
 }
 
 // escapeRegexChars escapes special regex characters in a string to prevent regex injection.
