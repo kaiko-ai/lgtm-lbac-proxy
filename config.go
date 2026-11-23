@@ -110,6 +110,12 @@ type TempoConfig struct {
 	Headers      map[string]string `mapstructure:"headers"`
 	ActorHeader  string            `mapstructure:"actor_header"`
 	Proxy        *ProxyConfig      `mapstructure:"proxy"` // Per-upstream proxy configuration override
+	// LabelMap renames policy rule names before they are applied to TraceQL,
+	// so one policy can serve every upstream. For example
+	// {"namespace": "resource.k8s.namespace.name"} lets a `namespace` rule,
+	// written for Loki and Prometheus, filter traces on the span's resource
+	// attribute. Rules whose name is not in the map are used as is.
+	LabelMap map[string]string `mapstructure:"label_map"`
 }
 
 type Config struct {

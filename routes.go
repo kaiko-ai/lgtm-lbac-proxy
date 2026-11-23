@@ -149,7 +149,7 @@ func (a *App) WithTempo() *App {
 	for _, route := range routes {
 		log.Trace().Any("route", route).Msg("Tempo route")
 		tempoRouter.HandleFunc(route.Url, handlerWithProxy(route.MatchWord,
-			TraceQLEnforcer(struct{}{}),
+			TraceQLEnforcer{LabelMap: a.Cfg.Tempo.LabelMap},
 			a.tempoProxy,
 			proxyCfg,
 			a.Cfg.Tempo.UseMutualTLS,
