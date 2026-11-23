@@ -76,6 +76,10 @@ tempo:
   headers:
     "X-Scope-OrgID": "application" # header to use for tempo tenant
   actor_header: "X-Tempo-User" # optional header for fair usage tracking (base64 encoded username)
+  # Optional: rename policy rule names for TraceQL, so a `namespace` rule
+  # written for Loki/Prometheus filters traces on the resource attribute.
+  # label_map:
+  #   namespace: resource.k8s.namespace.name
   # Per-upstream proxy configuration (optional - overrides global defaults)
   # Example: Tempo trace queries may need longer timeout but fewer connections
   #proxy:
