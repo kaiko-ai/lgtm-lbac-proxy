@@ -82,6 +82,16 @@ func (a *App) WithLoki() *App {
 		{Url: "/api/v1/index/volume_range", MatchWord: "query"},
 		// Patterns - https://grafana.com/docs/loki/latest/reference/loki-http-api/#detected-patterns
 		{Url: "/api/v1/patterns", MatchWord: "query"},
+		// Detected labels, fields and field values - used by Grafana Logs Drilldown.
+		// https://grafana.com/docs/loki/latest/reference/loki-http-api/#query-detected-labels
+		{Url: "/api/v1/detected_labels", MatchWord: "query"},
+		// https://grafana.com/docs/loki/latest/reference/loki-http-api/#query-detected-fields
+		{Url: "/api/v1/detected_fields", MatchWord: "query"},
+		{Url: "/api/v1/detected_field/{field}/values", MatchWord: "query"},
+		// Drilldown limits - the tenant's query limits for Grafana Logs Drilldown.
+		// Returns configuration, no log data; the policy query is added like for
+		// build info and ignored upstream.
+		{Url: "/api/v1/drilldown-limits", MatchWord: "query"},
 		// Tail - https://grafana.com/docs/loki/latest/reference/loki-http-api/#stream-logs
 		{Url: "/api/v1/tail", MatchWord: "query"},
 		// Additional Loki endpoints (not query endpoints)
