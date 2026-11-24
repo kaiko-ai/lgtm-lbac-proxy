@@ -140,9 +140,16 @@ func (a *App) WithTempo() *App {
 		// Search Endpoints - https://grafana.com/docs/tempo/latest/api_docs/#search
 		{Url: "/api/search", MatchWord: "q"},
 		{Url: "/api/v2/search", MatchWord: "q"},
+		// Build Info - https://grafana.com/docs/tempo/latest/api_docs/#status
+		// Grafana reads the version to pick features. No query parameters.
+		{Url: "/api/status/buildinfo", MatchWord: ""},
 		// Tag Discovery - https://grafana.com/docs/tempo/latest/api_docs/#search-tags
-		{Url: "/api/search/tags", MatchWord: "scope"},
-		{Url: "/api/v2/search/tags", MatchWord: "scope"},
+		// Not enforced: `scope` is a scope name (span, resource, ...), not a query,
+		// and Tempo does not narrow tag names by a `q` filter. The response holds
+		// attribute names only; their values go through the enforced
+		// tag values routes below.
+		{Url: "/api/search/tags", MatchWord: ""},
+		{Url: "/api/v2/search/tags", MatchWord: ""},
 		// Tag Values - https://grafana.com/docs/tempo/latest/api_docs/#search-tag-values
 		{Url: "/api/search/tag/{tag}/values", MatchWord: "q"},
 		{Url: "/api/v2/search/tag/{tag}/values", MatchWord: "q"},
