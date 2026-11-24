@@ -18,7 +18,18 @@ type EnforceQL interface {
 
 // enforceRequest enforces the incoming HTTP request using LabelPolicy.
 // It provides multi-label enforcement with flexible operators and logic.
+//
+// An empty queryMatch marks a route that carries no query to enforce (health
+// checks, build info, tag names). The request still needs a valid token and a
+// policy, but is forwarded unchanged. Before, an empty queryMatch made the
+// proxy add a stray `=<policy query>` parameter.
 func enforceRequest(r *http.Request, enforce EnforceQL, policy *LabelPolicy, queryMatch string) error {
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		return fmt.Errorf("invalid method")
+	}
+	if queryMatch == "" {
+		return nil
+	}
 	switch r.Method {
 	case http.MethodGet:
 		return enforceGet(r, enforce, *policy, queryMatch)
