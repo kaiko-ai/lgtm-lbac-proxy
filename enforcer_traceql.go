@@ -184,17 +184,9 @@ func buildRuleFilter(rule LabelRule) string {
 // validatePolicyAttributes validates that any existing policy attributes in the query
 // match the allowed values in the policy. Returns error if unauthorized values are found.
 func validatePolicyAttributes(query string, policy LabelPolicy) error {
-	// Build a map of label name to ALL allowed values across all rules
-	// This handles OR logic where multiple rules may allow different values for the same label
-	allowedValuesMap := make(map[string]map[string]bool)
-	for _, rule := range policy.Rules {
-		if _, exists := allowedValuesMap[rule.Name]; !exists {
-			allowedValuesMap[rule.Name] = make(map[string]bool)
-		}
-		for _, v := range rule.Values {
-			allowedValuesMap[rule.Name][v] = true
-		}
-	}
+	// Values allowed per label across all rules (OR logic), including the
+	// regexes of `=~` rules.
+	allowedValuesMap := allowedValuesByLabel(policy)
 
 	// Check each label name in the policy
 	for labelName, allowedValues := range allowedValuesMap {
@@ -220,7 +212,7 @@ func validatePolicyAttributes(query string, policy LabelPolicy) error {
 			queryValues := strings.Split(value, "|")
 			for _, queryValue := range queryValues {
 				queryValue = strings.TrimSpace(queryValue)
-				if _, ok := allowedValues[queryValue]; !ok {
+				if !allowedValues.allows(queryValue) {
 					return fmt.Errorf("unauthorized %s: %s", labelName, queryValue)
 				}
 			}
