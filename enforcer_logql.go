@@ -98,17 +98,9 @@ func EnforceMultiLabelMatchers(queryMatches []*labels.Matcher, policy LabelPolic
 	// Track which rules have been found in the query
 	foundRules := make(map[string]bool)
 
-	// Build a map of label name to ALL allowed values across all rules
-	// This handles OR logic where multiple rules may allow different values for the same label
-	allowedValuesMap := make(map[string]map[string]bool)
-	for _, rule := range policy.Rules {
-		if _, exists := allowedValuesMap[rule.Name]; !exists {
-			allowedValuesMap[rule.Name] = make(map[string]bool)
-		}
-		for _, v := range rule.Values {
-			allowedValuesMap[rule.Name][v] = true
-		}
-	}
+	// Values allowed per label across all rules (OR logic), including the
+	// regexes of `=~` rules.
+	allowedValuesMap := allowedValuesByLabel(policy)
 
 	// Validate existing matchers against policy
 	for _, queryMatcher := range queryMatches {
@@ -134,13 +126,13 @@ func EnforceMultiLabelMatchers(queryMatches []*labels.Matcher, policy LabelPolic
 }
 
 // validateMatcherAgainstAllowedValues checks if a matcher's values are in the allowed set.
-func validateMatcherAgainstAllowedValues(matcher *labels.Matcher, allowedValues map[string]bool) error {
+func validateMatcherAgainstAllowedValues(matcher *labels.Matcher, allowedValues *allowedValues) error {
 	// Extract values from matcher (handle regex patterns with |)
 	matcherValues := strings.Split(matcher.Value, "|")
 
 	// Check if all matcher values are allowed
 	for _, matcherValue := range matcherValues {
-		if !allowedValues[matcherValue] {
+		if !allowedValues.allows(matcherValue) {
 			return fmt.Errorf("unauthorized %s: %s", matcher.Name, matcherValue)
 		}
 	}
@@ -151,9 +143,5 @@ func validateMatcherAgainstAllowedValues(matcher *labels.Matcher, allowedValues 
 // validateMatcherAgainstRule checks if a matcher's values are allowed by the rule.
 // Deprecated: Use validateMatcherAgainstAllowedValues instead.
 func validateMatcherAgainstRule(matcher *labels.Matcher, rule LabelRule) error {
-	allowedValues := make(map[string]bool)
-	for _, v := range rule.Values {
-		allowedValues[v] = true
-	}
-	return validateMatcherAgainstAllowedValues(matcher, allowedValues)
+	return validateMatcherAgainstAllowedValues(matcher, allowedValuesByLabel(LabelPolicy{Rules: []LabelRule{rule}})[rule.Name])
 }

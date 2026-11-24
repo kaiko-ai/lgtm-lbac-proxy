@@ -107,20 +107,9 @@ func extractAllLabelsAndMatchers(expr parser.Expr) map[string][]*labels.Matcher 
 // validateQueryAgainstPolicy checks if existing query matchers comply with the policy.
 // Returns an error if any matcher violates the policy constraints.
 func validateQueryAgainstPolicy(queryLabels map[string][]*labels.Matcher, policy LabelPolicy) error {
-	// Build a map of label name to ALL allowed values across all rules
-	// This handles OR logic where multiple rules may allow different values for the same label
-	allowedValuesMap := make(map[string]map[string]bool)
-
-	for i := range policy.Rules {
-		rule := &policy.Rules[i]
-		if _, exists := allowedValuesMap[rule.Name]; !exists {
-			allowedValuesMap[rule.Name] = make(map[string]bool)
-		}
-		// Collect all allowed values for this label across all rules
-		for _, v := range rule.Values {
-			allowedValuesMap[rule.Name][v] = true
-		}
-	}
+	// Values allowed per label across all rules (OR logic), including the
+	// regexes of `=~` rules.
+	allowedValuesMap := allowedValuesByLabel(policy)
 
 	// Check each existing matcher
 	for labelName, matchers := range queryLabels {
@@ -142,10 +131,10 @@ func validateQueryAgainstPolicy(queryLabels map[string][]*labels.Matcher, policy
 }
 
 // validateMatcherWithValues checks if a matcher complies with the allowed values.
-func validateMatcherWithValues(matcher *labels.Matcher, allowedValues map[string]bool) error {
+func validateMatcherWithValues(matcher *labels.Matcher, allowedValues *allowedValues) error {
 	// For equality matchers, check if value is allowed
 	if matcher.Type == labels.MatchEqual {
-		if !allowedValues[matcher.Value] {
+		if !allowedValues.allows(matcher.Value) {
 			return fmt.Errorf("unauthorized %s: %s", matcher.Name, matcher.Value)
 		}
 	}
@@ -154,7 +143,7 @@ func validateMatcherWithValues(matcher *labels.Matcher, allowedValues map[string
 	if matcher.Type == labels.MatchRegexp {
 		values := strings.Split(matcher.Value, "|")
 		for _, v := range values {
-			if !allowedValues[v] {
+			if !allowedValues.allows(v) {
 				return fmt.Errorf("unauthorized %s: %s", matcher.Name, v)
 			}
 		}
@@ -169,12 +158,7 @@ func validateMatcherWithValues(matcher *labels.Matcher, allowedValues map[string
 // validateMatcher checks if a single matcher complies with the policy rule.
 // Deprecated: Use validateMatcherWithValues instead.
 func validateMatcher(matcher *labels.Matcher, rule *LabelRule) error {
-	// Create a map of allowed values
-	allowedValues := make(map[string]bool)
-	for _, v := range rule.Values {
-		allowedValues[v] = true
-	}
-	return validateMatcherWithValues(matcher, allowedValues)
+	return validateMatcherWithValues(matcher, allowedValuesByLabel(LabelPolicy{Rules: []LabelRule{*rule}})[rule.Name])
 }
 
 // buildMatchersFromPolicy creates label matchers from policy rules.
