@@ -11,15 +11,37 @@ import (
 )
 
 // TraceQLEnforcer manipulates and enforces tenant isolation on TraceQL queries.
-type TraceQLEnforcer struct{}
+type TraceQLEnforcer struct {
+	// LabelMap renames rule names to TraceQL attributes (see TempoConfig.LabelMap).
+	LabelMap map[string]string
+}
+
+// mapRuleNames returns a copy of policy with each rule name replaced by its
+// entry in labelMap, if any. The input policy is not modified.
+func mapRuleNames(policy LabelPolicy, labelMap map[string]string) LabelPolicy {
+	if len(labelMap) == 0 {
+		return policy
+	}
+	rules := make([]LabelRule, len(policy.Rules))
+	for i, rule := range policy.Rules {
+		if mapped, ok := labelMap[rule.Name]; ok {
+			rule.Name = mapped
+		}
+		rules[i] = rule
+	}
+	policy.Rules = rules
+	return policy
+}
 
 // Enforce modifies a TraceQL query string to enforce multi-label access policy.
 // It handles multiple label rules with different operators (=, !=, =~, !~) and logic (AND/OR).
 // If the input query is empty, constructs a new query from the policy.
 // If the input query is non-empty, validates existing attributes and injects policy filters.
 // Returns the modified query or an error if parsing, validation, or modification fails.
-func (TraceQLEnforcer) Enforce(query string, policy LabelPolicy) (string, error) {
+func (e TraceQLEnforcer) Enforce(query string, policy LabelPolicy) (string, error) {
 	log.Trace().Str("function", "enforce").Str("query", query).Msg("input")
+
+	policy = mapRuleNames(policy, e.LabelMap)
 
 	// Validate policy first
 	if err := policy.Validate(); err != nil {
@@ -162,17 +184,9 @@ func buildRuleFilter(rule LabelRule) string {
 // validatePolicyAttributes validates that any existing policy attributes in the query
 // match the allowed values in the policy. Returns error if unauthorized values are found.
 func validatePolicyAttributes(query string, policy LabelPolicy) error {
-	// Build a map of label name to ALL allowed values across all rules
-	// This handles OR logic where multiple rules may allow different values for the same label
-	allowedValuesMap := make(map[string]map[string]bool)
-	for _, rule := range policy.Rules {
-		if _, exists := allowedValuesMap[rule.Name]; !exists {
-			allowedValuesMap[rule.Name] = make(map[string]bool)
-		}
-		for _, v := range rule.Values {
-			allowedValuesMap[rule.Name][v] = true
-		}
-	}
+	// Values allowed per label across all rules (OR logic), including the
+	// regexes of `=~` rules.
+	allowedValuesMap := allowedValuesByLabel(policy)
 
 	// Check each label name in the policy
 	for labelName, allowedValues := range allowedValuesMap {
@@ -198,7 +212,7 @@ func validatePolicyAttributes(query string, policy LabelPolicy) error {
 			queryValues := strings.Split(value, "|")
 			for _, queryValue := range queryValues {
 				queryValue = strings.TrimSpace(queryValue)
-				if _, ok := allowedValues[queryValue]; !ok {
+				if !allowedValues.allows(queryValue) {
 					return fmt.Errorf("unauthorized %s: %s", labelName, queryValue)
 				}
 			}

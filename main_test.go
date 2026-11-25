@@ -167,6 +167,7 @@ func setupTestMainWithPrivateKey() (App, map[string]string, *ecdsa.PrivateKey) {
 	// defer upstreamServer.Close()
 	app.Cfg.Thanos.URL = upstreamServer.URL
 	app.Cfg.Loki.URL = upstreamServer.URL
+	app.Cfg.Tempo.URL = upstreamServer.URL
 
 	// Create a mock label store with pre-parsed policies (eager parsing)
 	parser := NewPolicyParser()
@@ -373,6 +374,94 @@ func Test_reverseProxy(t *testing.T) {
 			URL:              "/loki/api/v1/query_range?direction=backward&end=1690463973693000000&limit=10&query={tenant_id=\"forbidden_tenant\"} |= `path` |= `label` | json | line_format `{{.message}}` | json | line_format `{{.request}}` | json | line_format `{{.method}} {{.path}} {{.url | urldecode}}`&start=1690377573693000000&step=86400000ms",
 			expectedStatus:   http.StatusForbidden,
 			expectedBody:     "unauthorized tenant_id",
+		},
+		{
+			name:             "Loki_detected_labels_allowed_tenant",
+			authorization:    "Bearer " + tokens["userTenant"],
+			setAuthorization: true,
+			URL:              "/loki/api/v1/detected_labels?query={tenant_id=\"allowed_user\"}",
+			expectedStatus:   http.StatusOK,
+			expectedBody:     "Upstream server response\n",
+		},
+		{
+			name:             "Loki_detected_fields_allowed_tenant",
+			authorization:    "Bearer " + tokens["userTenant"],
+			setAuthorization: true,
+			URL:              "/loki/api/v1/detected_fields?query={tenant_id=\"allowed_user\"} | json",
+			expectedStatus:   http.StatusOK,
+			expectedBody:     "Upstream server response\n",
+		},
+		{
+			name:             "Loki_detected_fields_forbidden_tenant",
+			authorization:    "Bearer " + tokens["userTenant"],
+			setAuthorization: true,
+			URL:              "/loki/api/v1/detected_fields?query={tenant_id=\"forbidden_tenant\"}",
+			expectedStatus:   http.StatusForbidden,
+			expectedBody:     "unauthorized tenant_id",
+		},
+		{
+			name:             "Loki_detected_field_values_forbidden_tenant",
+			authorization:    "Bearer " + tokens["userTenant"],
+			setAuthorization: true,
+			URL:              "/loki/api/v1/detected_field/level/values?query={tenant_id=\"forbidden_tenant\"}",
+			expectedStatus:   http.StatusForbidden,
+			expectedBody:     "unauthorized tenant_id",
+		},
+		{
+			name:             "Loki_detected_field_values_no_query",
+			authorization:    "Bearer " + tokens["userTenant"],
+			setAuthorization: true,
+			URL:              "/loki/api/v1/detected_field/level/values",
+			expectedStatus:   http.StatusOK,
+			expectedBody:     "Upstream server response\n",
+		},
+		{
+			name:             "Loki_drilldown_limits",
+			authorization:    "Bearer " + tokens["userTenant"],
+			setAuthorization: true,
+			URL:              "/loki/api/v1/drilldown-limits",
+			expectedStatus:   http.StatusOK,
+			expectedBody:     "Upstream server response\n",
+		},
+		{
+			name:             "Tempo_buildinfo",
+			authorization:    "Bearer " + tokens["userTenant"],
+			setAuthorization: true,
+			URL:              "/api/status/buildinfo",
+			expectedStatus:   http.StatusOK,
+			expectedBody:     "Upstream server response\n",
+		},
+		{
+			name:             "Tempo_tag_names_v2_with_scope",
+			authorization:    "Bearer " + tokens["userTenant"],
+			setAuthorization: true,
+			URL:              "/api/v2/search/tags?scope=span",
+			expectedStatus:   http.StatusOK,
+			expectedBody:     "Upstream server response\n",
+		},
+		{
+			name:             "Tempo_tag_names_v1",
+			authorization:    "Bearer " + tokens["userTenant"],
+			setAuthorization: true,
+			URL:              "/api/search/tags",
+			expectedStatus:   http.StatusOK,
+			expectedBody:     "Upstream server response\n",
+		},
+		{
+			// Tag values stay enforced: the q filter is checked (here rejected,
+			// as the test policy's label is not a TraceQL attribute).
+			name:             "Tempo_tag_values_are_enforced",
+			authorization:    "Bearer " + tokens["userTenant"],
+			setAuthorization: true,
+			URL:              "/api/v2/search/tag/resource.service.name/values?q={ tenant_id = \"forbidden_tenant\" }",
+			expectedStatus:   http.StatusForbidden,
+			expectedBody:     "invalid TraceQL",
+		},
+		{
+			name:           "Tempo_tag_names_need_a_token",
+			URL:            "/api/v2/search/tags?scope=span",
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "no Authorization header found\n",
 		},
 		//{
 		//	name:             "Email_query",
