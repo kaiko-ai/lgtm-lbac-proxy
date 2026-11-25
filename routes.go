@@ -82,6 +82,16 @@ func (a *App) WithLoki() *App {
 		{Url: "/api/v1/index/volume_range", MatchWord: "query"},
 		// Patterns - https://grafana.com/docs/loki/latest/reference/loki-http-api/#detected-patterns
 		{Url: "/api/v1/patterns", MatchWord: "query"},
+		// Detected labels, fields and field values - used by Grafana Logs Drilldown.
+		// https://grafana.com/docs/loki/latest/reference/loki-http-api/#query-detected-labels
+		{Url: "/api/v1/detected_labels", MatchWord: "query"},
+		// https://grafana.com/docs/loki/latest/reference/loki-http-api/#query-detected-fields
+		{Url: "/api/v1/detected_fields", MatchWord: "query"},
+		{Url: "/api/v1/detected_field/{field}/values", MatchWord: "query"},
+		// Drilldown limits - the tenant's query limits for Grafana Logs Drilldown.
+		// Returns configuration, no log data; the policy query is added like for
+		// build info and ignored upstream.
+		{Url: "/api/v1/drilldown-limits", MatchWord: "query"},
 		// Tail - https://grafana.com/docs/loki/latest/reference/loki-http-api/#stream-logs
 		{Url: "/api/v1/tail", MatchWord: "query"},
 		// Additional Loki endpoints (not query endpoints)
@@ -130,9 +140,16 @@ func (a *App) WithTempo() *App {
 		// Search Endpoints - https://grafana.com/docs/tempo/latest/api_docs/#search
 		{Url: "/api/search", MatchWord: "q"},
 		{Url: "/api/v2/search", MatchWord: "q"},
+		// Build Info - https://grafana.com/docs/tempo/latest/api_docs/#status
+		// Grafana reads the version to pick features. No query parameters.
+		{Url: "/api/status/buildinfo", MatchWord: ""},
 		// Tag Discovery - https://grafana.com/docs/tempo/latest/api_docs/#search-tags
-		{Url: "/api/search/tags", MatchWord: "scope"},
-		{Url: "/api/v2/search/tags", MatchWord: "scope"},
+		// Not enforced: `scope` is a scope name (span, resource, ...), not a query,
+		// and Tempo does not narrow tag names by a `q` filter. The response holds
+		// attribute names only; their values go through the enforced
+		// tag values routes below.
+		{Url: "/api/search/tags", MatchWord: ""},
+		{Url: "/api/v2/search/tags", MatchWord: ""},
 		// Tag Values - https://grafana.com/docs/tempo/latest/api_docs/#search-tag-values
 		{Url: "/api/search/tag/{tag}/values", MatchWord: "q"},
 		{Url: "/api/v2/search/tag/{tag}/values", MatchWord: "q"},
@@ -149,7 +166,7 @@ func (a *App) WithTempo() *App {
 	for _, route := range routes {
 		log.Trace().Any("route", route).Msg("Tempo route")
 		tempoRouter.HandleFunc(route.Url, handlerWithProxy(route.MatchWord,
-			TraceQLEnforcer(struct{}{}),
+			TraceQLEnforcer{LabelMap: a.Cfg.Tempo.LabelMap},
 			a.tempoProxy,
 			proxyCfg,
 			a.Cfg.Tempo.UseMutualTLS,

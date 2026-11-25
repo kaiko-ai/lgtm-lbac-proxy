@@ -204,6 +204,25 @@ tempo:
   actor_header: "X-Tempo-User"
 ```
 
+### TraceQL label map
+
+The proxy applies one policy to every upstream, but Tempo names labels
+differently: a Kubernetes namespace is `resource.k8s.namespace.name` on a span,
+not `namespace`. `tempo.label_map` renames rule names before a policy is
+applied to TraceQL, so a single `namespace` rule covers logs, metrics and
+traces:
+
+```yaml
+tempo:
+  url: "https://tempo-query-frontend:3200"
+  label_map:
+    namespace: resource.k8s.namespace.name
+```
+
+A policy `namespace = [team-a, team-b]` then becomes
+`{ resource.k8s.namespace.name =~ "team-a|team-b" && (...) }` in every spanset
+of a TraceQL query. Rules whose name is not in the map are used as is.
+
 ### Configurable JWT Claims (New in v0.14.0)
 
 Different OAuth providers use different claim names for user identity. You can now configure which JWT claims to use:
