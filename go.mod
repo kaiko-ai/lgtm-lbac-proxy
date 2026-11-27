@@ -3,15 +3,15 @@ module github.com/binhnguyenduc/lgtm-lbac-proxy
 go 1.27.4
 
 require (
-	github.com/MicahParks/jwkset v0.11.5
+	github.com/MicahParks/jwkset v0.12.0
 	github.com/MicahParks/keyfunc/v3 v3.9.2
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/tempo v1.5.1-0.20261021135948-f317720e7e51
-	github.com/observatorium/api v0.1.3-0.20240311102334-63c873db5762
+	github.com/observatorium/api v0.1.3-0.20261102181744-5d961d61941f
 	github.com/prometheus/client_golang v1.25.0
-	github.com/prometheus/prometheus v0.311.3
+	github.com/prometheus/prometheus v0.316.0
 	github.com/rs/zerolog v1.35.1
 	github.com/slok/go-http-metrics v0.13.0
 	github.com/spf13/viper v1.21.0
@@ -132,5 +132,5 @@ require (
 // Tempo: v2.10.10 release (commit f317720e7e51). Prometheus: v0.311.3, the version Tempo v2.10.10 uses.
 replace (
 	github.com/grafana/tempo => github.com/grafana/tempo v1.5.1-0.20261021135948-f317720e7e51
-	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.311.3
+	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.316.0
 )
